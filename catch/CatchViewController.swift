@@ -24,9 +24,37 @@ class CatchViewController: UIViewController {
     // MARK: - UI Elements
     
     @IBOutlet weak var sceneView: ARSCNView!
-    @IBOutlet weak var moreCloser: UILabel!
-    @IBOutlet weak var count: UILabel!
-    @IBOutlet weak var andOne: UILabel!
+    
+    @IBOutlet weak var stopOrRunButton: UIButton!
+    @IBAction func stopOrRun(_ sender: UIButton) {
+        isStopFalling = !isStopFalling
+        if isStopFalling {
+            sender.setTitle("Run", for: .normal)
+            sender.setTitleColor(#colorLiteral(red: 0, green: 0.9768045545, blue: 0, alpha: 1), for: .normal)
+        }
+        else {
+            sender.setTitle("Stop", for: .normal)
+            sender.setTitleColor(#colorLiteral(red: 1, green: 0.1491314173, blue: 0, alpha: 1), for: .normal)
+        }
+    }
+    
+    var isStopFalling = false
+    
+    @IBAction func startFalling(_ sender: UIButton) {
+        
+        sender.isHidden = true
+        stopOrRunButton.isHidden = false
+        
+        for _ in 0..<15 {
+            let object = FallingObject(modelName: "ship")
+            updataInitialPositionAndAngle(object: object)
+            DispatchQueue.global(qos: .userInitiated).async {
+                object.loadObject()
+                self.sceneView.scene.rootNode.addChildNode(object)
+            }
+            fallingObjects.append(object)
+        }
+    }
     
     // MARK: - View Controller Life Cycle
     
@@ -54,22 +82,41 @@ class CatchViewController: UIViewController {
         session.pause()
     }
     
-    
-    
     // MARK: - Setup
     
     func setupScene() {
-        //未调用setup
+
         sceneView.delegate = self
         sceneView.session = session
         
-        moreCloser.isHidden = true
-        andOne.isHidden = true
+        stopOrRunButton.isHidden = true
     }
     
-    // MARK: - Gesture Recongnizer
+    // MARK: - Falling Object
     
+    var fallingObjects = [FallingObject]()
     
+    func updataInitialPositionAndAngle( object: FallingObject ) {
+        
+        let cameraPosition = (session.currentFrame?.camera.transform.columns.3)!
+        let position = float3(cameraPosition.x, cameraPosition.y, cameraPosition.z)
+                     + FallingObject.randomFloat3(x:8, y:4, z:8)
+                     + float3(-4, 4, -4)
+        
+        let PI = Float(Double.pi)
+        let angle = FallingObject.randomFloat3(x: 0, y: 2*PI, z: PI/2)
+                  + float3(x: PI/2, y: -1*PI, z: -1*PI/4)
+        
+        object.initialPositon = position
+        object.initialAngle = angle
+    }
 
 }
 
+extension CatchViewController {
+    static func distance4x4 ( matrix1: matrix_float4x4, matrix2: matrix_float4x4 ) -> Float {
+        let v1 = float3(matrix1.columns.3.x, matrix1.columns.3.y, matrix1.columns.3.z)
+        let v2 = float3(matrix2.columns.3.x, matrix2.columns.3.y, matrix2.columns.3.z)
+        return sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) + (v1.z - v2.z)*(v1.x - v2.x))
+    }
+}
